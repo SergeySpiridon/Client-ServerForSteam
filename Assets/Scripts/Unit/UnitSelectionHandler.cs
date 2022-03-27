@@ -13,28 +13,55 @@ public class UnitSelectionHandler : NetworkBehaviour
     //Будем хранить здесь всех выделенных юнитов
     public List<Unit> SelectedUnits { get; } = new List<Unit>();
 
+    [SerializeField] private RectTransform unitSelectionArea = null;
+    private RTSNetworkPlayer player;
+    private Vector2 startPosition;
+
     private void Start()
     {
         //ссылка на камеру
         mainCamera = Camera.main;
+        //берем наше соединение, берем компонент со скриптом
+        player = NetworkClient.connection.identity.GetComponent<RTSNetworkPlayer>();
     }
     private void Update()
     {
         //Проверка нажатия левой кнопки мыши, это новая система инпутов, добавленная вначале
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
-            foreach (var selectedUnit in SelectedUnits)
-            {
-                selectedUnit.Deselected();
-            }
-            SelectedUnits.Clear();
+            StartSelectionArea();
         }
-            else if (Mouse.current.leftButton.wasReleasedThisFrame)
+        else if (Mouse.current.leftButton.wasReleasedThisFrame)
         {
             ClearSelectionArea();
         }
+        else if (Mouse.current.leftButton.IsPressed())
+        {
+            UpdateSelectionArea();
+        }
     }
 
+    private void UpdateSelectionArea()
+    {
+        Vector2 mousePosition = Mouse.current.position.ReadValue();
+        float areaWidth = mousePosition.x - startPosition.x;
+        float areaHeight = mousePosition.y - startPosition.y;
+
+        //размер между двумя значениями
+        unitSelectionArea.sizeDelta = new Vector2(Mathf.Abs(areaWidth), Mathf.Abs(areaHeight));
+        unitSelectionArea.anchoredPosition = startPosition + new Vector2(areaWidth / 2, areaHeight / 2);
+    }
+    private void StartSelectionArea()
+    {
+        foreach (var selectedUnit in SelectedUnits)
+        {
+            selectedUnit.Deselected();
+        }
+        SelectedUnits.Clear();
+        unitSelectionArea.gameObject.SetActive(true);
+        startPosition = Mouse.current.position.ReadValue();
+        
+    }
     private void ClearSelectionArea()
     {
         //Возвращает луч, который идет от камеры через точку, а точка у нас позиция мыши
@@ -51,7 +78,7 @@ public class UnitSelectionHandler : NetworkBehaviour
             return;
         SelectedUnits.Add(unit);
 
-        foreach(var selectedUnit in SelectedUnits)
+        foreach (var selectedUnit in SelectedUnits)
         {
             selectedUnit.Selected();
         }
